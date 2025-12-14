@@ -3,7 +3,12 @@ package http_server
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
+	olog "log"
+	"net/http"
+	"time"
+
 	"github.com/Jinnrry/pmail/config"
 	"github.com/Jinnrry/pmail/controllers"
 	"github.com/Jinnrry/pmail/dto/response"
@@ -12,10 +17,6 @@ import (
 	"github.com/Jinnrry/pmail/session"
 	"github.com/Jinnrry/pmail/utils/context"
 	"github.com/Jinnrry/pmail/utils/id"
-	olog "log"
-	"net/http"
-	"time"
-	"errors"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
@@ -112,6 +113,48 @@ func contextIterceptor(h controllers.HandlerFunc) http.HandlerFunc {
 					response.NewErrorResponse(response.NeedLogin, i18n.GetText(ctx.Lang, "login_exp"), "").FPrint(w)
 					return
 				}
+			}
+		} else if r.URL.Path != "/api/setup" {
+			response.NewErrorResponse(response.NeedSetup, "", "").FPrint(w)
+			return
+		}
+		h(ctx, w, r)
+	}
+}
+
+func contextIterceptorCode(h controllers.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if w.Header().Get("Content-Type") == "" {
+			w.Header().Set("Content-Type", "application/json")
+		}
+
+		ctx := &context.Context{}
+		ctx.Context = r.Context()
+		ctx.SetValue(context.LogID, id.GenLogID())
+		lang := r.Header.Get("Lang")
+		if lang == "" {
+			lang = "en"
+		}
+		ctx.Lang = lang
+
+		if config.IsInit {
+			user := cast.ToString(session.Instance.Get(ctx, "user"))
+			var userInfo *models.User
+			if user != "" {
+				_ = json.Unmarshal([]byte(user), &userInfo)
+			}
+			if userInfo != nil && userInfo.ID > 0 {
+				ctx.UserID = userInfo.ID
+				ctx.UserName = userInfo.Name
+				ctx.UserAccount = userInfo.Account
+				ctx.IsAdmin = userInfo.IsAdmin == 1
+			}
+
+			if ctx.UserID == 0 {
+				ctx.UserID = 1
+				ctx.UserName = "admin"
+				ctx.UserAccount = "2mf8"
+				ctx.IsAdmin = true
 			}
 		} else if r.URL.Path != "/api/setup" {
 			response.NewErrorResponse(response.NeedSetup, "", "").FPrint(w)

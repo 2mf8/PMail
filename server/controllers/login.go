@@ -3,7 +3,11 @@ package controllers
 import (
 	"database/sql"
 	"encoding/json"
+	"io"
+	"net/http"
+
 	"github.com/Jinnrry/pmail/config"
+	"github.com/Jinnrry/pmail/controllers/email"
 	"github.com/Jinnrry/pmail/db"
 	"github.com/Jinnrry/pmail/dto/response"
 	"github.com/Jinnrry/pmail/i18n"
@@ -14,8 +18,6 @@ import (
 	"github.com/Jinnrry/pmail/utils/errors"
 	"github.com/Jinnrry/pmail/utils/password"
 	log "github.com/sirupsen/logrus"
-	"io"
-	"net/http"
 )
 
 type loginRequest struct {
@@ -44,6 +46,7 @@ func Login(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 	}
 
 	if user.ID != 0 {
+		email.LoginStatus[reqData.Account] = &user
 		userStr, _ := json.Marshal(user)
 		session.Instance.Put(req.Context(), "user", string(userStr))
 
