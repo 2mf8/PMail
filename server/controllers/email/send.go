@@ -69,6 +69,16 @@ func RandomString(n int) string {
 	}
 	return string(result)
 }
+
+func RandomIdString(n int) string {
+	var letters = []byte("0123456789")
+	result := make([]byte, n)
+	rand.NewSource(time.Now().Unix())
+	for i := range result {
+		result[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(result)
+}
 func Send(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 	li, ok := LoginStatus[ctx.UserAccount]
 	if !ok || li.Account != ctx.UserAccount {
@@ -283,6 +293,7 @@ func Send(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 
 func CodeSend(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 	codeGen := RandomString(4)
+	idGen := RandomIdString(2)
 	reqBytes, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.WithContext(ctx).Errorf("%+v", err)
@@ -307,7 +318,7 @@ func CodeSend(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 
 	reqData := sendRequest{
 		From: user{
-			Email: "2mf8@mail.2mf8.cn",
+			Email: "2mf8@2mf8.cn",
 			Name:  "爱魔方吧",
 		},
 		To: []user{
@@ -317,7 +328,7 @@ func CodeSend(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 			},
 		},
 		Subject: "2mf8.cn-验证码",
-		Text:    fmt.Sprintf(`<p>您的验证码为：<font size="5" color="red">%s</font> ,该验证码5分钟内有效</p><p>此邮件由系统自动发送，请勿回复！</p>`, codeGen),
+		Text:    fmt.Sprintf(`<p>您的验证码为：<br/>验证码：<font size="5" color="red">%s</font><br/>序号码：<font size="5" color="green">%s</font> <br/><br/>该验证码5分钟内有效</p><p>此邮件由系统自动发送，请勿回复！</p>`, codeGen, idGen),
 	}
 
 	if reqData.From.Email != "" {
@@ -507,8 +518,9 @@ func CodeSend(ctx *context.Context, w http.ResponseWriter, req *http.Request) {
 		}
 
 	}, nil)
-	log.WithContext(ctx).Info("email send success,", codeGen)
-	response.NewSuccessResponse(codeGen).FPrint(w)
+	codeStr := fmt.Sprintf("%s&%s", codeGen, idGen)
+	log.WithContext(ctx).Info("email send success,", codeStr)
+	response.NewSuccessResponse(codeStr).FPrint(w)
 }
 
 func json2string(d any) string {

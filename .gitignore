@@ -8,3 +8,4 @@ config
 *_KEY
 AURORA_SECRET
 *.exe
+*.zip
